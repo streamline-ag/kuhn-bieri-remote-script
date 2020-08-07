@@ -1,5 +1,7 @@
-const config = require('./config.js');
-const express = require('express');
+const config = require("./config.js");
+const express = require("express");
+const render = require("./dashboard");
+const fs = require("fs");
 
 function getTimeString(time) {
   var newDate = new Date();
@@ -15,6 +17,8 @@ const jsReload = `
     location.reload();
 }, 2000);</script>`;
 
+console.log(render());
+
 class ExecutableService {
   constructor(config) {
     this.executables = new Map();
@@ -25,13 +29,13 @@ class ExecutableService {
   }
   addExecutable = (exe) => {
     if (exe && exe.name && exe.path) {
-      const id = exe.name.toLowerCase().replace(' ', '').replace('/', '');
+      const id = exe.name.toLowerCase().replace(" ", "").replace("/", "");
       this.executables.set(id, {
         id: id,
         name: exe.name,
         path: exe.path,
         lastExecTime: null,
-        lastExecMessage: '',
+        lastExecMessage: "",
         success: false,
       });
     }
@@ -48,12 +52,12 @@ class ExecutableService {
 const es = new ExecutableService(config);
 let app = express();
 
-app.get('/:id', async function (req, res) {
+app.get("/:id", async function (req, res) {
   console.log(req.params.id);
   if (req.params.id && es.executables.has(req.params.id)) {
     const exe = es.executables.get(req.params.id);
     console.log(exe);
-    require('child_process').exec(exe.path, (err, stdout, stderr) => {
+    require("child_process").exec(exe.path, (err, stdout, stderr) => {
       if (err) {
         exe.success = false;
         exe.lastExecMessage = err.message;
@@ -83,24 +87,36 @@ app.get('/:id', async function (req, res) {
   }
 });
 
-app.get('/', async function (req, res) {
-  let html = '';
+app.get("/", async function (req, res) {
+  let html = "";
   es.executables.forEach((exe) => {
-    let success = exe.success ? '✅' : '❌';
+    let success = exe.success ? "✅" : "❌";
     const executing = ``;
     html =
       html +
-      `<div><h3>${exe.name}</h3><p><b>Letzte Ausführung:</b>${getTimeString(
+      `<div class="card" style="width: 25rem;"><div class="card-body"><h3 class="card-title">${
+        exe.name
+      }</h3><p class="card-text" ><b>Letzte Ausführung:</b> ${getTimeString(
         exe.lastExecTime
       )}</br>${success} ${
         exe.lastExecMessage
-      }</p><a href="http://localhost:8080/${exe.id}">Ausführen</a></div></br>`;
+      }</p><a class="btn btn-primary" href="http://localhost:8080/${
+        exe.id
+      }">Ausführen</a></div></div></br>`;
   });
-  res.send(html + jsReload);
+  res.send(render(html + jsReload));
+});
+app.get("/css/styles.css", async function (req, res) {
+  res.writeHead(200, { "Content-type": "text/css" });
+  var fileContents = fs.readFileSync("./css/styles.css", {
+    encoding: "utf8",
+  });
+  res.write(fileContents);
+  res.end();
 });
 
-console.log('hey');
+console.log("hey");
 
 let server = app.listen(8080, function () {
-  console.log('Server is listening on port http://localhost:8080');
+  console.log("Server is listening on port http://localhost:8080");
 });
