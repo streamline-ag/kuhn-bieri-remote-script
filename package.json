@@ -10,8 +10,8 @@
     "type": "git",
     "url": "git+https://github.com/streamline-ag/kuhn-bieri-remote-script.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Streamline AG",
+  "license": "None",
   "bugs": {
     "url": "https://github.com/streamline-ag/kuhn-bieri-remote-script/issues"
   },

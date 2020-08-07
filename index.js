@@ -4,9 +4,12 @@ const render = require("./dashboard");
 const fs = require("fs");
 
 function getTimeString(time) {
-  var newDate = new Date();
-  newDate.setTime(time);
-  return newDate.toLocaleString();
+  if (time) {
+    var newDate = new Date();
+    newDate.setTime(time);
+    return newDate.toLocaleString();
+  }
+  return "-";
 }
 
 const jsBack = `<script>
@@ -51,37 +54,49 @@ class ExecutableService {
 
 const es = new ExecutableService(config);
 let app = express();
+let running = false;
 
 app.get("/:id", async function (req, res) {
   console.log(req.params.id);
+  if (running) {
+    return;
+  }
   if (req.params.id && es.executables.has(req.params.id)) {
+    running = true;
     const exe = es.executables.get(req.params.id);
     console.log(exe);
-    require("child_process").exec(exe.path, (err, stdout, stderr) => {
-      if (err) {
-        exe.success = false;
-        exe.lastExecMessage = err.message;
-        exe.lastExecTime = Date.now();
-        es.updateExecutable(exe);
-        res.send(`<p>1${err}</p>${jsBack}`);
-        return console.log(err);
-      }
-      if (stderr) {
-        exe.success = false;
-        exe.lastExecMessage = stderr;
-        exe.lastExecTime = Date.now();
-        es.updateExecutable(exe);
-        res.send(`<p>${stderr}</p>`);
+    require("child_process").exec(
+      "cmd /c " + exe.path,
+      { cwd: "path" },
+      (err, stdout, stderr) => {
+        if (err) {
+          exe.success = false;
+          exe.lastExecMessage = err.message;
+          exe.lastExecTime = Date.now();
+          es.updateExecutable(exe);
+          res.send(`<p>1${err}</p>${jsBack}`);
+          running = false;
+          return console.log(err);
+        }
+        if (stderr) {
+          exe.success = false;
+          exe.lastExecMessage = stderr;
+          exe.lastExecTime = Date.now();
+          es.updateExecutable(exe);
+          res.send(`<p>${stderr}</p>`);
+          running = false;
+          console.log(stdout);
+        }
+        //SUCCESS
         console.log(stdout);
+        exe.success = true;
+        exe.lastExecMessage = stdout;
+        exe.lastExecTime = Date.now();
+        es.updateExecutable(exe);
+        running = false;
+        res.send(`<p>${stdout}</p>${jsBack}`);
       }
-      //SUCCESS
-      console.log(stdout);
-      exe.success = true;
-      exe.lastExecMessage = stdout;
-      exe.lastExecTime = Date.now();
-      es.updateExecutable(exe);
-      res.send(`<p>${stdout}</p>${jsBack}`);
-    });
+    );
   } else {
     res.send(`<p>Keine gültige ID</p>`);
   }
@@ -89,6 +104,7 @@ app.get("/:id", async function (req, res) {
 
 app.get("/", async function (req, res) {
   let html = "";
+
   es.executables.forEach((exe) => {
     let success = exe.success ? "✅" : "❌";
     const executing = ``;
@@ -100,7 +116,7 @@ app.get("/", async function (req, res) {
         exe.lastExecTime
       )}</br>${success} ${
         exe.lastExecMessage
-      }</p><a class="btn btn-primary" href="http://localhost:8080/${
+      }</p><a class="btn btn-primary" href="/${
         exe.id
       }">Ausführen</a></div></div></br>`;
   });

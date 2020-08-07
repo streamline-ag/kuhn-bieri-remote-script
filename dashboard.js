@@ -8,6 +8,7 @@ module.exports = function (body) {
     <link rel="stylesheet" type="text/css" href="css/styles.css" />
     <title>Dashboard</title>
   </head>
-  <body><div class="pt-5 col-10 m-auto card-deck">${body}</div></body>
+  <body>
+  <div class="pt-5 col-10 m-auto card-deck">${body}</div></body>
 </html>`;
 };
