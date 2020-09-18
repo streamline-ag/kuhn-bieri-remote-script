@@ -12,6 +12,7 @@ function getTimeString(time) {
   return "-";
 }
 
+
 const jsBack = `<script>
     history.back()
 </script>`;
@@ -40,6 +41,7 @@ class ExecutableService {
         lastExecTime: null,
         lastExecMessage: "",
         success: false,
+		inProgress: false,
       });
     }
   };
@@ -54,49 +56,43 @@ class ExecutableService {
 
 const es = new ExecutableService(config);
 let app = express();
-let running = false;
 
 app.get("/:id", async function (req, res) {
   console.log(req.params.id);
-  if (running) {
-    return;
-  }
   if (req.params.id && es.executables.has(req.params.id)) {
-    running = true;
     const exe = es.executables.get(req.params.id);
     console.log(exe);
-    require("child_process").exec(
-      "cmd /c " + exe.path,
-      { cwd: "path" },
-      (err, stdout, stderr) => {
-        if (err) {
-          exe.success = false;
-          exe.lastExecMessage = err.message;
-          exe.lastExecTime = Date.now();
-          es.updateExecutable(exe);
-          res.send(`<p>1${err}</p>${jsBack}`);
-          running = false;
-          return console.log(err);
-        }
-        if (stderr) {
-          exe.success = false;
-          exe.lastExecMessage = stderr;
-          exe.lastExecTime = Date.now();
-          es.updateExecutable(exe);
-          res.send(`<p>${stderr}</p>`);
-          running = false;
-          console.log(stdout);
-        }
-        //SUCCESS
-        console.log(stdout);
-        exe.success = true;
-        exe.lastExecMessage = stdout;
+	if(!exe.inProgress){
+		exe.inProgress = true
+	}
+    require("child_process").exec("cmd /c  " + exe.path,{cwd:"D:/ContentisAG/SyncWORKSReports/Batch"}, (err, stdout, stderr) => {
+      if (err) {
+        exe.success = false;
+        exe.lastExecMessage = err.message;
         exe.lastExecTime = Date.now();
         es.updateExecutable(exe);
-        running = false;
-        res.send(`<p>${stdout}</p>${jsBack}`);
+		exe.inProgress = false
+        res.send(`<p>1${err}</p>${jsBack}`);
+        return console.log(err);
       }
-    );
+      if (stderr) {
+        exe.success = false;
+        exe.lastExecMessage = stderr;
+        exe.lastExecTime = Date.now();
+		exe.inProgress = false
+        es.updateExecutable(exe);
+        res.send(`<p>${stderr}</p>${jsBack}`);
+        console.log(stdout);
+      }
+      //SUCCESS
+      console.log(stdout);
+      exe.success = true;
+      exe.lastExecMessage = stdout;
+      exe.lastExecTime = Date.now();
+	  exe.inProgress = false
+      es.updateExecutable(exe);
+      res.send(`<p>${stdout}</p>${jsBack}`);
+    });
   } else {
     res.send(`<p>Keine gültige ID</p>`);
   }
@@ -104,27 +100,35 @@ app.get("/:id", async function (req, res) {
 
 app.get("/", async function (req, res) {
   let html = "";
-
   es.executables.forEach((exe) => {
     let success = exe.success ? "✅" : "❌";
+	if(exe.inProgress){
+		success = "⏲";
+	}
     const executing = ``;
     html =
       html +
-      `<div class="card" style="width: 25rem;"><div class="card-body"><h3 class="card-title">${
+      `<div class="card"><div class="card-body"><h3 class="card-title">${
         exe.name
       }</h3><p class="card-text" ><b>Letzte Ausführung:</b> ${getTimeString(
         exe.lastExecTime
-      )}</br>${success} ${
-        exe.lastExecMessage
-      }</p><a class="btn btn-primary" href="/${
+      )} ${success}</p>`;
+	  if(!exe.inProgress){
+	  html =
+      html +
+      `<a class="btn btn-primary" href="/${
         exe.id
-      }">Ausführen</a></div></div></br>`;
+      }">Ausführen</a>`;
+	  }
+	  html =
+      html +
+      `</div></div></br>`;
   });
   res.send(render(html + jsReload));
 });
 app.get("/css/styles.css", async function (req, res) {
   res.writeHead(200, { "Content-type": "text/css" });
-  var fileContents = fs.readFileSync("./css/styles.css", {
+  var fileContents = fs.readFileSync("D:/ContentisAG/SyncWORKSReports/Batch/remote-script/css/styles.css", {
     encoding: "utf8",
   });
   res.write(fileContents);
@@ -133,6 +137,6 @@ app.get("/css/styles.css", async function (req, res) {
 
 console.log("hey");
 
-let server = app.listen(8080, function () {
-  console.log("Server is listening on port http://localhost:8080");
+let server = app.listen(80, function () {
+  console.log("Server is listening on port http://localhost:80");
 });
